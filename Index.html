@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CYBER-SIM // ONION-MATRIX v9.0</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            background-color: #020402;
+            color: #00ff41;
+            font-family: 'Courier New', Courier, monospace;
+            overflow-x: hidden;
+        }
+        /* Matrix Background Canvas */
+        #matrix-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.18;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        /* Top Dashboard */
+        .top-bar {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid #00ff41;
+            background: rgba(0, 15, 0, 0.9);
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 0 15px rgba(0, 255, 65, 0.3);
+        }
+        .blink {
+            animation: blinker 1s linear infinite;
+            color: #ff3333;
+            font-weight: bold;
+        }
+        @keyframes blinker {
+            50% { opacity: 0; }
+        }
+        /* Live Console & Progress */
+        .console-box {
+            border: 1px solid #008f11;
+            background: rgba(0, 10, 0, 0.95);
+            padding: 12px;
+            margin-bottom: 20px;
+            height: 120px;
+            overflow-y: hidden;
+            font-size: 13px;
+            position: relative;
+        }
+        .log-line {
+            margin-bottom: 4px;
+            color: #00cc33;
+        }
+        /* Search & Filter */
+        .controls {
+            margin-bottom: 15px;
+            display: flex;
+            gap: 10px;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            background: #050a05;
+            border: 1px solid #00ff41;
+            color: #00ff41;
+            font-family: inherit;
+            font-size: 14px;
+            outline: none;
+        }
+        /* Grid of 60 Fictional Nodes */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 12px;
+        }
+        .card {
+            border: 1px solid #004411;
+            background: rgba(5, 15, 5, 0.92);
+            padding: 12px;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            position: relative;
+        }
+        .card:hover {
+            border-color: #00ff41;
+            box-shadow: 0 0 12px rgba(0, 255, 65, 0.4);
+            transform: translateY(-2px);
+        }
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: #888;
+            margin-bottom: 6px;
+        }
+        .status-dot {
+            color: #00ff41;
+        }
+        .url {
+            color: #00ff41;
+            font-size: 14px;
+            word-break: break-all;
+            text-decoration: none;
+            display: block;
+        }
+        /* Popup Modal for Fake Connection */
+        #modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #030803;
+            border: 2px solid #00ff41;
+            padding: 25px;
+            width: 90%;
+            max-width: 450px;
+            z-index: 100;
+            box-shadow: 0 0 30px #00ff41;
+            text-align: center;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 15px;
+            border: 1px solid #00ff41;
+            margin: 15px 0;
+            padding: 2px;
+        }
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background: #00ff41;
+            transition: width 0.2s;
+        }
+        button {
+            background: #00ff41;
+            color: #000;
+            border: none;
+            padding: 8px 16px;
+            font-family: inherit;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="matrix-bg"></canvas>
+
+    <div class="container">
+        <div class="top-bar">
+            <div>
+                <h3>// GHOST-PROTOCOL v9.4 [UI SIMULATION]</h3>
+                <small>ROUTING: LOCALHOST &rarr; RELAY-77 &rarr; VIRTUAL-NODE</small>
+            </div>
+            <div>
+                <span>MODE: <span class="blink">DEMO / FICTIONAL</span></span>
+            </div>
+        </div>
+
+        <!-- Live Scrolling Terminal Logs -->
+        <div class="console-box" id="console">
+            <div class="log-line">[SYS] Initializing virtual interface...</div>
+        </div>
+
+        <!-- Search Filter -->
+        <div class="controls">
+            <input type="text" id="search" placeholder="Search fictional nodes (e.g., VAULT, ARCHIVE, 04)..." onkeyup="filterNodes()">
+        </div>
+
+        <!-- 60 Fictional Nodes Container -->
+        <div class="grid" id="node-grid"></div>
+    </div>
+
+    <!-- Fake Connection Popup -->
+    <div id="modal">
+        <h4 id="modal-title">CONNECTING TO VIRTUAL NODE...</h4>
+        <div class="progress-bar">
+            <div class="progress-fill" id="progress"></div>
+        </div>
+        <p id="modal-text" style="font-size: 13px; color: #ccc;">Encrypting dummy packets...</p>
+        <button onclick="closeModal()">CLOSE TERMINAL</button>
+    </div>
+
+    <script>
+        // 1. Matrix Falling Code Effect
+        const canvas = document.getElementById('matrix-bg');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*';
+        const fontSize = 14;
+        const columns = canvas.width / fontSize;
+        const drops = Array(Math.floor(columns)).fill(1);
+
+        function drawMatrix() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#00ff41';
+            ctx.font = fontSize + 'px monospace';
+            for (let i = 0; i < drops.length; i++) {
+                const text = letters.charAt(Math.floor(Math.random() * letters.length));
+                ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+                if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
+                drops[i]++;
+            }
+        }
+        setInterval(drawMatrix, 40);
+
+        // 2. Live Fake Terminal Logs
+        const consoleBox = document.getElementById('console');
+        const fakeLogs = [
+            "[NET] Handshake established with Virtual-Relay-09...",
+            "[SEC] AES-256 simulation layer active.",
+            "[PING] Latency check: 14ms (Local Sandbox).",
+            "[INFO] Refreshing 60 fictional directory hashes...",
+            "[SYS] Memory buffer clean. No external network calls.",
+            "[NODE] Synchronizing dummy mirror nodes..."
+        ];
+        setInterval(() => {
+            const log = document.createElement('div');
+            log.className = 'log-line';
+            const time = new Date().toLocaleTimeString();
+            log.textContent = `[${time}] ${fakeLogs[Math.floor(Math.random() * fakeLogs.length)]}`;
+            consoleBox.appendChild(log);
+            if (consoleBox.children.length > 5) consoleBox.removeChild(consoleBox.firstChild);
+        }, 1800);
+
+        // 3. Generate 60 Fictional Links
+        const grid = document.getElementById('node-grid');
+        const tags = ['DATA-VAULT', 'CYBER-ARCHIVE', 'GHOST-FORUM', 'MIRROR-NET', 'SHADOW-DB', 'QUANTUM-LAB'];
+        const allCards = [];
+
+        function makeHash() {
+            const chars = 'abcdefghijklmnopqrstuvwxyz234567';
+            let str = '';
+            for (let i = 0; i < 22; i++) str += chars[Math.floor(Math.random() * chars.length)];
+            return str + '.sim-node';
+        }
+
+        for (let i = 1; i <= 60; i++) {
+            const tag = tags[i % tags.length];
+            const url = makeHash();
+            const num = i < 10 ? '0' + i : i;
+            
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.setAttribute('data-search', `${num} ${tag} ${url}`.toLowerCase());
+            card.innerHTML = `
+                <div class="card-header">
+                    <span>NODE #${num} // ${tag}</span>
+                    <span class="status-dot">● ONLINE (SIM)</span>
+                </div>
+                <div class="url">http://${url}</div>
+            `;
+            card.onclick = () => simulateConnect(url);
+            grid.appendChild(card);
+            allCards.push(card);
+        }
+
+        // 4. Search Filter
+        function filterNodes() {
+            const query = document.getElementById('search').value.toLowerCase();
+            allCards.forEach(card => {
+                const text = card.getAttribute('data-search');
+                card.style.display = text.includes(query) ? 'block' : 'none';
+            });
+        }
+
+        // 5. Fake Connection Popup Animation
+        function simulateConnect(url) {
+            const modal = document.getElementById('modal');
+            const progress = document.getElementById('progress');
+            const text = document.getElementById('modal-text');
+            modal.style.display = 'block';
+            progress.style.width = '10%';
+            text.textContent = `Routing to ${url}...`;
+
+            setTimeout(() => { progress.style.width = '55%'; text.textContent = 'Bypassing virtual firewall...'; }, 500);
+            setTimeout(() => { 
